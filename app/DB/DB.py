@@ -38,8 +38,10 @@ class DB:
         exchange_id TEXT PRIMARY KEY,
         user_exchange_id TEXT,
         tokens TEXT,
-        type TEXT,
         status TEXT,
+        rate_to_rate TEXT,
+        value INTEGER,
+        exchanged_at TEXT,
         FOREIGN KEY (user_exchange_id) REFERENCES users (user_id)
         );
         """)
@@ -61,8 +63,8 @@ class DB:
         self.con.close()
 
     # This function inserts the registration information in to DB
-    def register(self):
-        user_info = dbf.produce_user() # produce_user function have explained in DB_funcs.py.
+    def register(self,user_input):
+        user_info = dbf.produce_user(user_input) # produce_user function have explained in DB_funcs.py.
         user_id = user_info[0]
         user_name = user_info[1]
         password = user_info[2]
@@ -106,23 +108,24 @@ class DB:
         self.con.commit()
 
     # This function inserts the exchange information in to DB
-    def create_exchange(self):
-        exchange_info = dbf.produce_exchange() # produce_exchange function have explained in DB_funcs.py.
+    def create_exchange(self,exchange_input):
+        exchange_info = dbf.produce_exchange(exchange_input) # produce_exchange function have explained in DB_funcs.py.
         exchange_id = exchange_info[0]
-        tokens = exchange_info[1]
-        type = exchange_info[2]
-        status = exchange_info[3]
-        rate = exchange_info[4]
-        production_date = exchange_info[5]
+        exchange_user_id = exchange_info[1]
+        tokens = exchange_info[2]
+        rate_to_rate = exchange_info[3]
+        value = exchange_info[4]
+        status = exchange_info[5]
+        production_date = exchange_info[6]
 
         self.cursor.execute("""
-        INSERT INTO exchanges VALUES(?,?,?,?,?,?)
-        """,(exchange_id, tokens, type, status, rate, production_date))
+        INSERT INTO exchanges VALUES(?,?,?,?,?,?,?)
+        """,(exchange_id, exchange_user_id,tokens, rate_to_rate,value, status,production_date))
         self.con.commit()
 
     # This function inserts the log information in to DB
-    def create_log(self):
-        log_info = dbf.produce_log() # produce_log function have explained in DB_funcs.py.
+    def create_log(self,log_input):
+        log_info = dbf.produce_log(log_input) # produce_log function have explained in DB_funcs.py.
         log_id = log_info[0]
         logged_user_id = log_info[1]
         logged_at = log_info[2]
@@ -151,14 +154,39 @@ class DB:
         SELECT * FROM tokens WHERE owner_id = ?
         """, (user_id,))
         wallet_JSON = self.cursor.fetchall()
-        # tokens stores as JSON. [({token1},{token2},{token3})] wallet will be like this.
+        # tokens stores as JSON. [({token1}),({token2}),({token3})] wallet will be like this.
         # To fix this I wrote the code below.
 
         wallet = list()
-        for i in wallet_JSON[0]:
-            wallet.append(i)     # With this code wallet will be like [{token1},{token2},{token3}], as I want.
-
+        for i in wallet_JSON:
+            wallet.append(i[0])    # With this code wallet will be like [{token1},{token2},{token3}], as I want.
         return wallet
+
+    def check_exchange(self,exchange_info):
+        exchange_id = exchange_info[0]
+        exchange_user_id = exchange_info[1]
+        tokens = exchange_info[2]
+        rate_to_rate = exchange_info[3]
+        value = exchange_info[4]
+
+        wallet = self.get_user_wallet(exchange_user_id)
+
+        from_rate = rate_to_rate["from"]
+        to_rate = rate_to_rate["to"]
+
+        rate_counter = 0
+
+        for i in wallet:
+            rate = i["rate"]
+            if rate == from_rate:
+                rate_counter += i["value"]
+
+        if rate_counter >= value:
+            state = "ACCEPTED"
+        else:
+            state = "REJECTED"
+
+        return state
 
 
 

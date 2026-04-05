@@ -17,8 +17,6 @@ def generate_user_id():
     while True:
         if isUserIdUnique(user_id): # Checks the DB for is there any other user id same with the function generated.
             return user_id
-        else:
-            continue
 
 def isUserIdUnique(user_id):
     if db.DB_connection.isIdUnique(user_id,"users"):
