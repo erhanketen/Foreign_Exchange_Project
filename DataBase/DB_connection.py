@@ -1,4 +1,4 @@
-from DB import DB
+from DataBase.DB import DB
 
 DataBase = DB()
 

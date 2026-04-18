@@ -1,4 +1,8 @@
-import Classes, DataBase, Exchange
+from Exchange.exchange import main_exn, get_exchange_rates
+from Classes.User import User
+from DataBase.DB_connection import DataBase
+
+
 
 def logged(logged_user_id):
     print("""
@@ -21,9 +25,12 @@ ACTİONS
             print("Logging out...")
             break
         elif choice == "1":
-            from_rate = input("From Rate: ")
-            to_rate = input("To Rate: ")
-            value = input("Value: ")
+            from_rate = input("Chose a Base Rate: ")
+            rates = get_exchange_rates(from_rate)
+            for i in rates:
+                print(i,rates[i],sep=" : ")
+            to_rate = input("Chose a Target Rate: ")
+            value = int(input("How Much Do Yo Want To Buy: "))
 
             exchange_info = \
                 {
@@ -34,11 +41,23 @@ ACTİONS
                 }
 
             print("Exchanging...")
-            Exchange.exchange.main(exchange_info)
-            print("Exchanging Done!")
+            exchange_st = main_exn(exchange_info)
+            if exchange_st:
+                print("Exchanging Done!")
+            else:
+                print("Exchanging cancelled!")
 
         elif choice == "2":
-            DataBase.DB_connection.DataBase.get_user_info(logged_user_id)
+            iformation = DataBase.get_user_info(logged_user_id)
+            print("""
+USER INFO
+
+Username: {}
+Password: {}
+            """.format(iformation["user_info"][0][1], iformation["user_info"][0][2]))
+            print("\nWALLET INFO\n")
+            for i in iformation["wallet_info"]:
+                print(i,iformation["wallet_info"][i],sep=" : ")
 
 
 def main():
@@ -62,16 +81,17 @@ ACTİONS
 
         if choice == "0":
             print("Shutting down...")
+            DataBase.close_connection()
             break
 
         elif choice == "1":
             username= input("Username: ")
             password = input("Password: ")
-            new_user = Classes.User.User(username, password)
+            new_user = User(username, password)
 
             print("Registering...")
-            register = DataBase.DB_connection.DataBase.register(new_user)
-            if register == "Already Registered":
+            register = DataBase.register(new_user)
+            if register == "AlreadyRegistered":
                 print("Already Registered")
             else:
                 print("Registered!")
@@ -79,10 +99,10 @@ ACTİONS
         elif choice == "2":
             username= input("Username: ")
             password = input("Password: ")
-            logged_user = Classes.User.User(username, password)
+            logged_user = User(username, password)
 
             print("Logging in...")
-            logged_user_id = DataBase.DB_connection.DataBase.login(logged_user)
+            logged_user_id = DataBase.login(logged_user)
             if not logged_user_id:
                 print("Unable to log in!")
             else:
@@ -93,3 +113,5 @@ ACTİONS
             print("Invalid choice!")
 
 
+if __name__ == "__main__":
+    main()
