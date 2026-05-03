@@ -122,3 +122,4 @@ class DB:
         information = {"user_info":user,"wallet_info":wallet}
         return information
 
+DataBase = DB()

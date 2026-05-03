@@ -1,5 +1,5 @@
 from Classes.Token import Token
-from DataBase.DB_connection import DataBase
+from DataBase.DB import DataBase
 from API.api import get_rates
 
 def main_exn(exchange_info):
@@ -76,8 +76,7 @@ def confirm_exchange(values,wallet,exchange_info):
 
     DataBase.update_wallet(wallet,exchange_info["user_id"])
 
-def get_exchange_rates(based_on):
-    rates = get_rates()
+def get_exchange_rates(rates,based_on):
 
     calculated_rates = {
         "EUR": rates[based_on] / 1,

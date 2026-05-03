@@ -1,6 +1,7 @@
 from Exchange.exchange import main_exn, get_exchange_rates
 from Classes.User import User
-from DataBase.DB_connection import DataBase
+from DataBase.DB import DataBase
+from API.api import get_rates
 
 
 
@@ -26,7 +27,8 @@ ACTİONS
             break
         elif choice == "1":
             from_rate = input("Chose a Base Rate: ")
-            rates = get_exchange_rates(from_rate)
+            rates_api = get_rates()
+            rates = get_exchange_rates(rates_api,from_rate)
             for i in rates:
                 print(i,rates[i],sep=" : ")
             to_rate = input("Chose a Target Rate: ")
@@ -111,4 +113,5 @@ ACTİONS
 
         else:
             print("Invalid choice!")
+
 
