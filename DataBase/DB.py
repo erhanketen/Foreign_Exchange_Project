@@ -30,6 +30,16 @@ class DB:
         """)
         self.con.commit()
 
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pics (
+        pic_path TEXT,
+        pic_user_id TEXT,
+        state TEXT DEFAULT 'Default',
+        FOREIGN KEY (pic_user_id) REFERENCES User (user_id) 
+        )
+        """)
+        self.con.commit()
+
     def close_connection(self):
         self.con.close()
 
@@ -112,6 +122,9 @@ class DB:
         tokens = self.get_wallet(user_id)
         wallet = {}
 
+        if not tokens:
+            return {"user_info":user,"wallet_info":{"EUR":0}}
+
         for i in tokens:
             value = i["value"]
             if not (i["token_rate"] in wallet):
@@ -121,5 +134,37 @@ class DB:
 
         information = {"user_info":user,"wallet_info":wallet}
         return information
+
+    def get_pp(self,user_id):
+        self.cursor.execute("""
+        SELECT * FROM Pics WHERE pic_user_id = ?
+        """,(user_id,))
+        pic = self.cursor.fetchall()
+
+        picture = dict()
+
+        picture["pp_path"] = pic[0][0]
+        picture["pp_user_id"] = pic[0][1]
+        picture["state"] = pic[0][2]
+
+        return picture
+
+    def add_default_pp(self,user_id):
+        self.cursor.execute("""
+        INSERT INTO Pics (pic_user_id) VALUES (?)
+        """,(user_id,))
+        self.con.commit()
+
+    def change_profile_photo(self,user_id,path):
+        self.cursor.execute("""
+        UPDATE pics SET pic_path = ? WHERE pic_user_id = ?
+        """,(path,user_id))
+        self.con.commit()
+
+        self.cursor.execute("""
+        UPDATE pics SET state = 'Changed' WHERE pic_user_id = ?
+        """,(user_id,))
+        self.con.commit()
+
 
 DataBase = DB()
