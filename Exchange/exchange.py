@@ -2,25 +2,30 @@ from Classes.Token import Token
 from DataBase.DB import DataBase
 from API.api import get_rates
 
-def main_exn(exchange_info):
+def main_exn(exchange_info,values):
     user_id = exchange_info["user_id"]
     wallet = get_wallet(user_id)
-    exchanging = exchange(exchange_info,wallet)
+    exchanging = exchange(values,exchange_info,wallet)
     if not exchanging:
         return False
     else:
         return True
 
+"""
+    exchange_info = \
+                {
+                "user_id": logged_user_id,
+                "from": from_rate,
+                "to": to_rate,
+                "value": value
+                }
+"""
+
 def get_wallet(user_id):
     wallet = DataBase.get_wallet(user_id)
     return wallet
 
-def exchange(exchange_info, wallet):
-    values = calculate_exchange_value(exchange_info)
-
-    if not get_permission(values[1]):
-        return False
-
+def exchange(values,exchange_info, wallet):
     if check_wallet(wallet,values,exchange_info["from"]):
         confirm_exchange(values,wallet,exchange_info)
         return True
@@ -94,12 +99,5 @@ def get_exchange_rates(rates,based_on):
 
     return calculated_rates
 
-def get_permission(payment):
-    print("Total Payment: {}".format(payment))
-    permission = input("Do you accept the exchanging (y/n): ")
-    if permission == "y":
-        return True
-    else:
-        return False
 
 

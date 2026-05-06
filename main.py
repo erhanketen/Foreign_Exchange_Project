@@ -1,8 +1,10 @@
 import sys
 import os
+import shutil
 from API.api import get_rates
-from Exchange.exchange import get_exchange_rates
-from GUI.resorces.ui_fep_gui_v4 import Ui_MainWindow
+from Exchange.exchange import get_exchange_rates, main_exn, calculate_exchange_value
+from Classes.Token import Token
+from GUI.resorces.ui_fep_gui_v5 import Ui_MainWindow
 from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QFileDialog
 from PySide6.QtCore import QObject, Signal, QThread, Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap
@@ -13,6 +15,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+
+        self.symbols = {
+            "EUR": "€",
+            "USD": "$",
+            "GBP": "£",
+            "JPY": "¥",
+            "CHF": "₣",
+            "CAD": "CA$",
+            "AUD": "AU$",
+            "SAR": "⃁",
+            "TRY": "₺",
+            "CNY": "CN¥",
+            "NZD": "NZ$"
+        }
 
         self.currencies = [
             "USD",
@@ -42,6 +58,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.back_home_button.clicked.connect(self.show_home_page)
         self.logout_button.clicked.connect(self.show_login_page)
         self.change_foto_button.clicked.connect(self.change_profile_photo)
+
+        self.buy_buttons = {
+            "EUR": self.buy_eur_button,
+            "USD": self.buy_usd_button,
+            "GBP": self.buy_gbp_button,
+            "JPY": self.buy_jpy_button,
+            "CHF": self.buy_chf_button,
+            "CAD": self.buy_cad_button,
+            "AUD": self.buy_aud_button,
+            "TRY": self.buy_try_button,
+            "CNY": self.buy_cny_button,
+            "NZD": self.buy_nzd_button,
+            "SAR": self.buy_sar_button,
+        }
+
+        self.amount_spinboxes = {
+            "EUR": self.dsb_amount_eur,
+            "USD": self.dsb_amount_usd,
+            "GBP": self.dsb_amount_gbp,
+            "JPY": self.dsb_amount_jpy,
+            "CHF": self.dsb_amount_chf,
+            "CAD": self.dsb_amount_cad,
+            "AUD": self.dsb_amount_aud,
+            "TRY": self.dsb_amount_try,
+            "CNY": self.dsb_amount_cny,
+            "NZD": self.dsb_amount_nzd,
+            "SAR": self.dsb_amount_sar,
+        }
+
+        for currency, button in self.buy_buttons.items():
+            button.clicked.connect(lambda checked=False, to_rate=currency: self.buy(to_rate))
 
         self.cb_base_currency.currentTextChanged.connect(self.update_page)
 
@@ -93,7 +140,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.information(self,"Register Unsuccessful","This username already exists.\nPlease try again.")
         elif register == "Registered":
             QMessageBox.information(self,"Registered","Registration Successful.\nPlease login.")
-            DataBase.add_default_pp(user.user_id)
+            start_token = Token("EUR",500,user.user_id)
+            try:
+                DataBase.add_default_pp(user.user_id)
+                DataBase.add_token(start_token.token)
+            except Exception as e:
+                self.registerusername_edit.clear()
+                self.registerpassword_edit.clear()
+                self.conpassword_edit.clear()
+                QMessageBox.warning(self,"Register Unsuccessful","Something went wrong.\nPlease try again.")
+                print(e)
         else:
             QMessageBox.information(self,"Register Unsuccessful","Something went wrong.\nPlease try again.")
             self.stackedWidget.setCurrentWidget(self.login_page)
@@ -109,7 +165,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not file_path:
             return
 
-        DataBase.change_profile_photo(self.user_id,file_path)
+        file_name = os.path.basename(file_path)
+
+        target_base_dir = os.path.dirname(os.path.abspath(__file__))
+        target_dir = os.path.join(target_base_dir,"GUI" ,"profile_photos", file_name)
+
+        shutil.copy2(file_path, target_dir)
+
+        DataBase.change_profile_photo(self.user_id,target_dir)
         self.set_profile_photo()
 
 
@@ -148,7 +211,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.profile_button.setText("")
         self.profile_button.setIcon(QIcon(pp_path))
-        self.profile_button.setIconSize(QSize(64, 64))
+        self.profile_button.setIconSize(QSize(70, 70))
 
     def show_home_page(self):
         self.stackedWidget.setCurrentWidget(self.home_page)
@@ -326,6 +389,86 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def update_page(self):
         self.update_rates()
         self.load_portfolio()
+
+    def buy(self,to_rate):
+        from_rate = self.cb_base_currency.currentText()
+        value = self.amount_spinboxes[to_rate].value()
+
+        self.exchange_info = \
+            {
+                "user_id": self.user_id,
+                "from": from_rate,
+                "to": to_rate,
+                "value": value
+            }
+
+        payment_value = value * (self.rates[from_rate] / self.rates[to_rate])
+
+        self.from_rate_lbl.setText(self.symbols[from_rate])
+        self.from_rate_amount_lbl.setText(f"{payment_value} {from_rate}")
+
+        self.to_rate_lbl.setText(self.symbols[to_rate])
+        self.to_rate_amount_lbl.setText(f"{value} {to_rate}")
+
+        self.stackedWidget_2.setCurrentWidget(self.buying_page)
+
+        self.con_button.clicked.connect(self.exchange)
+        self.dec_button.clicked.connect(self.decline)
+
+    def exchange(self):
+        self.stackedWidget_2.setCurrentWidget(self.loading_page)
+
+        self.buy_thread = QThread()
+        self.buyworker = ExchangeWorker(self.exchange_info)
+
+        self.buyworker.moveToThread(self.buy_thread)
+
+        self.buy_thread.started.connect(self.buyworker.run)
+
+        self.buyworker.finished.connect(self.on_buy_success)
+        self.buyworker.error.connect(self.on_buy_error)
+
+        self.buyworker.finished.connect(self.buy_thread.quit)
+        self.buyworker.error.connect(self.buy_thread.quit)
+
+        self.buyworker.finished.connect(self.buyworker.deleteLater)
+        self.buyworker.error.connect(self.buyworker.deleteLater)
+        self.buy_thread.finished.connect(self.buy_thread.deleteLater)
+
+        self.buy_thread.start()
+
+    def on_buy_success(self,values):
+        try:
+            main_exn(self.exchange_info,values)
+            QMessageBox.information(self, "Purchase Successful", "Purchase Completed Successfully")
+            self.update_page()
+            self.load_profile(self.user_id)
+            self.stackedWidget_2.setCurrentWidget(self.rate_page)
+        except Exception as e:
+            QMessageBox.information(self, "Purchase Unsuccessful", f"Purchase Failed\n\n{e}")
+
+    def on_buy_error(self,error):
+        QMessageBox.warning(self,"Purchase Error",f"Purchase failed\n\n{error}")
+        self.stackedWidget_2.setCurrentWidget(self.rate_page)
+
+    def decline(self):
+        self.stackedWidget_2.setCurrentWidget(self.rate_page)
+
+class ExchangeWorker(QObject):
+    finished = Signal(list)
+    error = Signal(str)
+
+    def __init__(self,exchange_info):
+        super().__init__()
+
+        self.exchange_info = exchange_info
+
+    def run(self):
+        try:
+            values = calculate_exchange_value(self.exchange_info)
+            self.finished.emit(values)
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 class RateWorker(QObject):
