@@ -439,11 +439,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def on_buy_success(self,values):
         try:
-            main_exn(self.exchange_info,values)
-            QMessageBox.information(self, "Purchase Successful", "Purchase Completed Successfully")
-            self.update_page()
-            self.load_profile(self.user_id)
-            self.stackedWidget_2.setCurrentWidget(self.rate_page)
+            exchange_ = main_exn(self.exchange_info,values)
+            if exchange_:
+                QMessageBox.information(self, "Purchase Successful", "Purchase Completed Successfully")
+                self.update_page()
+                self.load_profile(self.user_id)
+                self.stackedWidget_2.setCurrentWidget(self.rate_page)
+            else:
+                QMessageBox.warning(self,"Purchase Unsuccessful","Insufficient Balance")
+                self.stackedWidget_2.setCurrentWidget(self.rate_page)
         except Exception as e:
             QMessageBox.information(self, "Purchase Unsuccessful", f"Purchase Failed\n\n{e}")
 

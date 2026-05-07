@@ -143,9 +143,12 @@ class DB:
 
         picture = dict()
 
-        picture["pp_path"] = pic[0][0]
-        picture["pp_user_id"] = pic[0][1]
-        picture["state"] = pic[0][2]
+        if pic:
+            picture["pp_path"] = pic[0][0]
+            picture["pp_user_id"] = pic[0][1]
+            picture["state"] = pic[0][2]
+        else:
+            picture["state"] = "Default"
 
         return picture
 
