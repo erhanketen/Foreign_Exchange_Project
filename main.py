@@ -11,10 +11,17 @@ from PySide6.QtGui import QIcon, QPixmap
 from DataBase.DB import DataBase
 from Classes.User import User
 
+def icon_path():
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base_path, "assets/icon.ico")
+    return path
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+
+        self.setWindowIcon(QIcon(icon_path()))
 
         self.symbols = {
             "EUR": "€",
@@ -485,7 +492,6 @@ class RateWorker(QObject):
             self.finished.emit(rates)
         except Exception as e:
             self.error.emit(str(e))
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
