@@ -425,6 +425,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def exchange(self):
         self.stackedWidget_2.setCurrentWidget(self.loading_page)
 
+        self.buy_in_progress = True
+
         self.buy_thread = QThread()
         self.buyworker = ExchangeWorker(self.exchange_info)
 
@@ -438,11 +440,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.buyworker.finished.connect(self.buy_thread.quit)
         self.buyworker.error.connect(self.buy_thread.quit)
 
-        self.buyworker.finished.connect(self.buyworker.deleteLater)
-        self.buyworker.error.connect(self.buyworker.deleteLater)
-        self.buy_thread.finished.connect(self.buy_thread.deleteLater)
+        self.buy_thread.finished.connect(self.cleanup_buy_thread)
 
         self.buy_thread.start()
+
+    def cleanup_buy_thread(self):
+        self.buy_in_progress = False
+
+        if self.buyworker is not None:
+            self.buyworker.deleteLater()
+            self.buyworker = None
+
+        if self.buy_thread is not None:
+            self.buy_thread.deleteLater()
+            self.buy_thread = None
 
     def on_buy_success(self,values):
         try:
